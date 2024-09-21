@@ -4,11 +4,9 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.StructuredTaskScope;
+import java.util.function.Supplier;
 
 @Service
 @Slf4j
@@ -23,16 +21,15 @@ public class BookingService {
      which makes threads logging unusable
     */
     private final ThreadFactory threadFactory = Thread.ofVirtual().name("booking-", 0).factory();
-    private final ExecutorService executorService = Executors.newCachedThreadPool(threadFactory);
 
     @SneakyThrows
     public String book(String destination) {
-        Future<String> there = executorService.submit(() -> book(destination, TripType.THERE));
-        Future<String> back = executorService.submit(() -> book(destination, TripType.BACK));
-        return String.join("\n",
-            there.get(),
-            back.get()
-        );
+        try (var scope = new StructuredTaskScope.ShutdownOnFailure("Booking", threadFactory)) {
+            Supplier<String> there = scope.fork(() -> book(destination, TripType.THERE));
+            Supplier<String> back = scope.fork(() -> book(destination, TripType.BACK));
+            scope.join().throwIfFailed();
+            return String.join("\n",there.get(), back.get());
+        }
     }
 
     @SneakyThrows
