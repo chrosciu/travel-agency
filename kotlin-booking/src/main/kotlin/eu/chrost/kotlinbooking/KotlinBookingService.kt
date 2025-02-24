@@ -1,6 +1,10 @@
 package eu.chrost.kotlinbooking
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import org.springframework.stereotype.Service
 
 private val logger = KotlinLogging.logger {}
@@ -12,16 +16,16 @@ class KotlinBookingService {
         BACK
     }
 
-    fun book(destination: String): String {
-        return listOf(
-            book(destination, TripType.THERE),
-            book(destination, TripType.BACK)
-        ).joinToString("\n")
+    suspend fun book(destination: String): String = coroutineScope {
+        listOf(
+            async { book(destination, TripType.THERE) },
+            async { book(destination, TripType.BACK) }
+        ).awaitAll().joinToString("\n")
     }
 
-    private fun book(destination: String, tripType: TripType): String {
+    private suspend fun book(destination: String, tripType: TripType): String {
         logger.info { "[$destination $tripType] Booking start" }
-        Thread.sleep(3000)
+        delay(3000)
         logger.info { "[$destination $tripType] Booking end" }
         return "Booked $tripType travel to:  $destination"
     }
