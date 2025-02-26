@@ -1,24 +1,16 @@
 package eu.chrost.kotlinbooking
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-
 import org.springframework.stereotype.Service
 import java.util.concurrent.Executors
-import kotlin.coroutines.CoroutineContext
 
 private val logger = KotlinLogging.logger {}
 
-object VirtualThreadDispatcher : CoroutineDispatcher() {
-    private val executor = Executors.newVirtualThreadPerTaskExecutor()
-
-    override fun dispatch(context: CoroutineContext, block: Runnable) {
-        executor.execute(block)
-    }
-}
+private val virtualThreadDispatcher = Executors.newVirtualThreadPerTaskExecutor().asCoroutineDispatcher()
 
 @Service
 class KotlinBookingService {
@@ -29,8 +21,8 @@ class KotlinBookingService {
 
     suspend fun book(destination: String): String = coroutineScope {
         listOf(
-            async(VirtualThreadDispatcher) { book(destination, TripType.THERE) },
-            async(VirtualThreadDispatcher) { book(destination, TripType.BACK) }
+            async(virtualThreadDispatcher) { book(destination, TripType.THERE) },
+            async(virtualThreadDispatcher) { book(destination, TripType.BACK) }
         ).awaitAll().joinToString("\n")
     }
 
